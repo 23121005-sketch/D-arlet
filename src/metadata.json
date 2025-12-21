@@ -1,0 +1,5 @@
+{
+  "name": "Arlet's Restaurant System",
+  "description": "A comprehensive restaurant management system including public frontend and role-based internal dashboards (Admin, Reservation, Delivery).",
+  "requestFramePermissions": []
+}
