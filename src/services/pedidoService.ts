@@ -4,13 +4,17 @@ import type { Pedido, NuevoPedido } from '../types';
 
 export const pedidoService = {
   async crearPedido(pedido: NuevoPedido, empleadoId: string): Promise<Pedido> {
+    if (!/^9\d{8}$/.test(pedido.telefono)) {
+      throw new Error('El número de teléfono debe iniciar con 9 y tener exactamente 9 dígitos.');
+    }
+
     const { data, error } = await supabase
       .from('pedidos')
       .insert({
         ...pedido,
         estado: 'pendiente',
         empleado_id: empleadoId,
-        repartidor_id: pedido.repartidor_id || empleadoId, // Vinculación automática si no se asigna
+        repartidor_id: pedido.repartidor_id || empleadoId,
         pagado: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -20,6 +24,32 @@ export const pedidoService = {
     
     if (error) throw error;
     return data;
+  },
+
+  async actualizarPedido(pedidoId: string, datosActualizados: any): Promise<void> {
+    // VALIDACIÓN DE SEGURIDAD (Backend logic)
+    // Primero verificamos el estado actual en la DB
+    const { data: pedidoActual, error: errorFetch } = await supabase
+      .from('pedidos')
+      .select('estado')
+      .eq('id', pedidoId)
+      .single();
+
+    if (errorFetch || !pedidoActual) throw new Error('No se pudo verificar el estado del pedido.');
+    
+    if (pedidoActual.estado !== 'pendiente') {
+      throw new Error('Este pedido ya está en proceso y no puede ser editado.');
+    }
+
+    const { error } = await supabase
+      .from('pedidos')
+      .update({
+        ...datosActualizados,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', pedidoId);
+
+    if (error) throw error;
   },
 
   async getAllPedidos(): Promise<Pedido[]> {
@@ -53,7 +83,6 @@ export const pedidoService = {
       updated_at: new Date().toISOString()
     };
 
-    // Registro automático de tiempos según el estado
     if (nuevoEstado === 'en_camino') {
       updates.hora_salida_real = new Date().toISOString();
     } else if (nuevoEstado === 'entregado') {
