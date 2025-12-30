@@ -1,15 +1,32 @@
 // src/types.ts
-export type Role = 'admin' | 'reservas' | 'delivery' | null;
+export type Role = 'admin' | 'reservas' | 'delivery' | 'cocina' | null;
 
 export interface User {
   username: string;
   role: Role;
   name: string;
-  // AGREGAR estas propiedades:
-  id?: string; // ID del empleado en la tabla empleados
-  auth_id?: string; // ID de Supabase Auth (para admin)
-  estado?: string; // Estado del empleado
-  empleado_id?: string; // Alternativo para id
+  id?: string; 
+  auth_id?: string; 
+  estado?: string; 
+  empleado_id?: string; 
+}
+
+export interface Reclamacion{
+  id: string;
+  fecha: string;
+  cliente_nombre: string;
+  cliente_dni: string;
+  cliente_direccion: string;
+  cliente_telefono: string;
+  cliente_email: string;
+  tipo_bien: 'producto' | 'servicio';
+  monto_reclamado?: number;
+  descripcion_bien: string;
+  tipo: 'reclamacion' | 'queja';
+  detalle: string;
+  pedido_consumidor: string;
+  estado: 'pendiente' | 'en_proceso' | 'resuelto';
+  respuesta_empresa?: string;
 }
 
 export interface Dish {
@@ -68,7 +85,7 @@ export interface EmpleadoDB {
   id: string;
   nombre: string;
   email: string;
-  rol: 'admin' | 'reservas' | 'delivery';
+  rol: 'admin' | 'reservas' | 'delivery' | 'cocina';
   estado: 'activo' | 'inactivo' | 'vacaciones';
   auth_id: string | null;
   created_at: string;
@@ -79,7 +96,7 @@ export interface Empleado {
   nombre: string;
   email: string;
   telefono?: string;
-  rol: 'admin' | 'reservas' | 'delivery';
+  rol: 'admin' | 'reservas' | 'delivery' | 'cocina';
   estado: 'activo' | 'inactivo' | 'vacaciones';
   auth_id?: string;
   created_at: string;
@@ -89,7 +106,7 @@ export interface NuevoEmpleado {
   nombre: string;
   email: string;
   telefono: string;
-  rol: 'reservas' | 'delivery';
+  rol: 'reservas' | 'delivery' | 'cocina';
   password: string;
 }
 export interface ValidationErrors {
@@ -98,8 +115,8 @@ export interface ValidationErrors {
   telefono?: string;
   password?: string;
   rol?: string;
-  nuevaContrasena?: string;     // ← AGREGAR
-  confirmarContrasena?: string; // ← AGREGAR
+  nuevaContrasena?: string;    
+  confirmarContrasena?: string; 
 }
 
 export interface ActualizarContrasenaData {
@@ -133,12 +150,12 @@ export interface Pedido {
   cliente_nombre: string;
   direccion: string;
   telefono: string;
-  referencia?: string; // Referencia de entrega
+  referencia?: string; 
   detalles_pedido: PedidoItem[] | any; 
   total: number;
-  estado: 'pendiente' | 'en_preparacion' | 'en_camino' | 'entregado' | 'cancelado';
-  empleado_id: string; // Quién creó el pedido
-  repartidor_id?: string; // Quién lo entrega
+  estado: 'pendiente' | 'en_preparacion' | 'listo_para_reparto' | 'en_camino' | 'entregado' | 'cancelado';
+  empleado_id: string; 
+  repartidor_id?: string; 
   notas?: string;
   metodo_pago: 'efectivo' | 'yape' | 'plin' | 'transferencia';
   prioridad: 1 | 2 | 3; 
@@ -146,11 +163,10 @@ export interface Pedido {
   pagado: boolean;
   created_at: string;
   updated_at: string;
-  hora_entrega?: string; // Hora programada (HH:mm)
-  hora_salida_real?: string; // Timestamp de salida
-  hora_entrega_real?: string; // Timestamp de entrega
+  hora_entrega?: string; 
+  hora_salida_real?: string; 
+  hora_entrega_real?: string; 
   
-  // Relaciones
   empleados?: { nombre: string };
   repartidores?: { nombre: string };
 }

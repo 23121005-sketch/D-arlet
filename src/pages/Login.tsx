@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authService';
 import { supabase } from '../supabaseClient';
 import { Lock, Clock } from 'lucide-react';
-
+////////datos de login y seguridad
 export const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -12,10 +12,10 @@ export const Login = () => {
   const [bloqueado, setBloqueado] = useState(false);
   const [tiempoRestante, setTiempoRestante] = useState(0);
   const [loading, setLoading] = useState(false);
-  
+////////////
   const navigate = useNavigate();
   const { login } = useAuth();
-
+///////
   // Configuración de Bloqueo
   const MAX_INTENTOS = 3;
   const GET_TIEMPO_BLOQUEO = (intentos: number) => {
@@ -23,7 +23,7 @@ export const Login = () => {
     // 3 minutos base + 2 minutos adicionales por cada fallo extra
     return (3 + (intentos - 3) * 2) * 60 * 1000;
   };
-
+/////////
   useEffect(() => {
     let intervalo: any;
     if (bloqueado && tiempoRestante > 0) {
@@ -100,7 +100,7 @@ export const Login = () => {
       setLoading(false);
       return;
     }
-
+////////
     try {
       const { data: empleado, error: empleadoError } = await supabase
         .from('empleados')
@@ -114,7 +114,7 @@ export const Login = () => {
         setLoading(false);
         return;
       }
-
+////////////
       let loginExitoso = false;
       const passwordEnBase64 = btoa(password);
       
@@ -140,14 +140,14 @@ export const Login = () => {
 
         // Esperar a que el servicio actualice el estado global antes de navegar
         await login(userData);
-
+////////
         switch (rolNormalizado) {
           case 'admin': navigate('/admin'); break;
           case 'reservas': navigate('/reservas'); break;
           case 'delivery': navigate('/delivery'); break;
           case 'cocina': navigate('/cocina-panel'); break;
           default: setError('Rol no válido');
-        }
+        }//////////////////
       } else {
         incrementarIntentosFallidos();
         setError('Contraseña incorrecta');
@@ -159,7 +159,7 @@ export const Login = () => {
       setLoading(false);
     }
   };
-
+//////////////
   if (bloqueado) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -174,7 +174,7 @@ export const Login = () => {
       </div>
     );
   }
-
+/////////////////
   return (
     <div className="min-h-screen flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1544148103-0773bf10d330?q=80&w=2070')] bg-cover bg-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './services/authService';
@@ -9,7 +10,8 @@ import {
   ReservationPanel, 
   DeliveryPanel, 
   PanelCocina, 
-  AdminPedidosPanel 
+  AdminPedidosPanel,
+  AdminReclamacionesPanel
 } from './pages/PanelPages';
 
 const Footer = () => (
@@ -55,13 +57,23 @@ const AppContent = () => {
       {/* Auth */}
       <Route path="/login" element={<Login />} />
 
-      {/* PROTECTED ROUTES - NUEVA ESTRUCTURA */}
+      {/* PROTECTED ROUTES */}
       {/* Panel Administrador */}
       <Route 
         path="/admin" 
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminPanel />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Panel de Reclamaciones (Admin) */}
+      <Route 
+        path="/admin-reclamos" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminReclamacionesPanel />
           </ProtectedRoute>
         } 
       />
@@ -86,7 +98,7 @@ const AppContent = () => {
         } 
       />
 
-      {/* Panel Cocina - HABILITADO PARA ROL 'cocina' y 'admin' */}
+      {/* Panel Cocina */}
       <Route 
         path="/cocina-panel" 
         element={

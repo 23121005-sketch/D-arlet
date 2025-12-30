@@ -97,7 +97,7 @@ export const Chatbot = () => {
     }, 600);
   };
   const handleSupport = () => {
-    window.open("https://wa.me/51987654321", "_blank");
+    window.open("https://wa.me/51900857774", "_blank");
   };
   return (
     <div className="fixed bottom-6 right-6 z-50">

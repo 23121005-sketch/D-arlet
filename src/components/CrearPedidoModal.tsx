@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   X, Plus, Trash2, MapPin, Phone, User, Clock, 
@@ -7,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { pedidoService } from '../services/pedidoService';
+import { auditoriaService } from '../services/auditoriaService';
 import type { Empleado } from '../types';
 import type {Pedido, PedidoItem } from '../types';
 
@@ -33,7 +33,8 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  repartidores
+  repartidores,
+  pedidoParaEditar
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -56,25 +57,55 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const userStr = localStorage.getItem('arlet_user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        setFormData(prev => ({ 
-          ...prev, 
-          repartidor_id: user.id || '',
-          fecha_entrega: getLocalDate(),
+      if (pedidoParaEditar) {
+        // MODO EDICIÓN: Precargar datos
+        let fecha = getLocalDate();
+        let hora = '';
+
+        if ((pedidoParaEditar as any).fecha_entrega) {
+            fecha = (pedidoParaEditar as any).fecha_entrega;
+            hora = (pedidoParaEditar as any).hora_entrega || '';
+        }
+
+        setFormData({
+          cliente_nombre: pedidoParaEditar.cliente_nombre || '',
+          telefono: pedidoParaEditar.telefono || '',
+          fecha_entrega: fecha,
+          hora_entrega: hora,
+          direccion: pedidoParaEditar.direccion || '',
+          referencia: pedidoParaEditar.referencia || '',
+          productos: (pedidoParaEditar.detalles_pedido || []).map((p: any, idx: number) => ({
+            id: idx.toString(),
+            nombre: p.item || '',
+            cantidad: p.cantidad || 1,
+            precio: p.precio || 0,
+            notasItem: p.notas || ''
+          })),
+          nota_adicional: pedidoParaEditar.notas || '',
+          repartidor_id: pedidoParaEditar.repartidor_id || '',
+          metodo_pago: (pedidoParaEditar.metodo_pago?.toLowerCase() as any) || 'efectivo',
+        });
+      } else {
+        // MODO CREACIÓN: Limpiar formulario
+        const userStr = localStorage.getItem('arlet_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        setFormData({ 
           cliente_nombre: '',
           telefono: '',
+          fecha_entrega: getLocalDate(),
+          hora_entrega: '',
           direccion: '',
           referencia: '',
           productos: [{ id: Date.now().toString(), nombre: '', cantidad: 1, precio: 0 }],
-          nota_adicional: ''
-        }));
+          nota_adicional: '',
+          repartidor_id: user?.id || '',
+          metodo_pago: 'efectivo'
+        });
       }
       setTelefonoError('');
       setError('');
     }
-  }, [isOpen]);
+  }, [isOpen, pedidoParaEditar]);
 
   useEffect(() => {
     generarHorasDisponibles();
@@ -91,7 +122,6 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
     }
     setHorasDisponibles(horas);
     
-    // Sugerir hora válida (ahora + 30 min)
     const ahora = new Date();
     ahora.setMinutes(ahora.getMinutes() + 30);
     const hActual = ahora.getHours();
@@ -124,7 +154,18 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
   const actualizarProducto = (id: string, campo: string, valor: any) => {
     setFormData(prev => ({
       ...prev,
-      productos: prev.productos.map(p => p.id === id ? { ...p, [campo]: valor } : p)
+      productos: prev.productos.map(p => {
+        if (p.id === id) {
+          if (campo === 'precio') {
+            return { ...p, [campo]: parseFloat(valor) || 0 };
+          }
+          if (campo === 'cantidad') {
+            return { ...p, [campo]: parseInt(valor) || 1 };
+          }
+          return { ...p, [campo]: valor };
+        }
+        return p;
+      })
     }));
   };
 
@@ -152,7 +193,6 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
     e.preventDefault();
     setError('');
 
-    // 1. Validar Teléfono
     const telErr = validarTelefono(formData.telefono);
     if (telErr) {
         setTelefonoError(telErr);
@@ -160,10 +200,11 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
         return;
     }
 
-    // 2. VALIDACIÓN CRONOLÓGICA (Requerimiento Principal)
     const ahora = new Date();
     const [anio, mes, dia] = formData.fecha_entrega.split('-').map(Number);
-    const [hora, min] = formData.hora_entrega.split(':').map(Number);
+    const [horaStr, minStr] = (formData.hora_entrega || '00:00').split(':');
+    const hora = parseInt(horaStr) || 0;
+    const min = parseInt(minStr) || 0;
     const fechaSeleccionada = new Date(anio, mes - 1, dia, hora, min);
 
     if (fechaSeleccionada < ahora) {
@@ -172,8 +213,7 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
         return;
     }
 
-    // 3. Validar Productos
-    if (formData.productos.some(p => !p.nombre.trim() || p.precio <= 0)) {
+    if (formData.productos.some(p => !p.nombre.trim() || p.precio < 0)) {
         setError('Complete los nombres y precios de los productos.');
         return;
     }
@@ -183,10 +223,15 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
       const userStr = localStorage.getItem('arlet_user');
       const user = userStr ? JSON.parse(userStr) : null;
 
-      const infoProgramacion = `ENTREGA PROGRAMADA: ${formData.fecha_entrega} a las ${formData.hora_entrega}.`;
-      const notaFinal = `${infoProgramacion} ${formData.nota_adicional}`.trim();
+      if (!user || !user.id) {
+          throw new Error('Sesión de usuario no encontrada. Por favor inicie sesión nuevamente.');
+      }
 
-      const pedidoBase = {
+      const cleanRepartidorId = formData.repartidor_id && formData.repartidor_id.trim() !== '' 
+          ? formData.repartidor_id.trim() 
+          : null;
+
+      const pedidoBase: any = {
         cliente_nombre: formData.cliente_nombre.trim(),
         direccion: formData.direccion.trim(),
         telefono: formData.telefono.trim(),
@@ -197,40 +242,72 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
           notas: p.notasItem || ''
         })),
         total: calcularTotal(),
-        notas: notaFinal,
+        notas: formData.nota_adicional.trim(),
         metodo_pago: formData.metodo_pago,
-        repartidor_id: formData.repartidor_id || user?.id,
-        empleado_id: user?.id,
-        estado: 'pendiente',
-        pagado: true,
-        referencia: formData.referencia.trim() || null,
-        created_at: new Date().toISOString(),
+        repartidor_id: cleanRepartidorId,
+        empleado_id: user.id,
+        prioridad: 1,
         updated_at: new Date().toISOString()
       };
 
-      // Intentamos insertar con las columnas extendidas
-      // Si falla por "column not found", reintentamos solo con las columnas base
-      const { error: insertError } = await supabase.from('pedidos').insert({
-        ...pedidoBase,
-        fecha_entrega: formData.fecha_entrega,
-        hora_entrega: formData.hora_entrega
-      });
+      if (!pedidoParaEditar) {
+        pedidoBase.estado = 'pendiente';
+        pedidoBase.pagado = true;
+        pedidoBase.created_at = new Date().toISOString();
+      }
+      
+      pedidoBase.referencia = formData.referencia.trim() || null;
+      pedidoBase.fecha_entrega = formData.fecha_entrega;
+      pedidoBase.hora_entrega = formData.hora_entrega;
 
-      if (insertError) {
-        if (insertError.message.includes('column') || insertError.code === '42703') {
-           // FALLBACK: La base de datos no tiene las columnas nuevas, guardamos todo en "notas"
-           const { error: fallbackError } = await supabase.from('pedidos').insert(pedidoBase);
-           if (fallbackError) throw fallbackError;
+      let result;
+      if (pedidoParaEditar) {
+          result = await supabase.from('pedidos').update(pedidoBase).eq('id', pedidoParaEditar.id);
+          if (!result.error) {
+              await auditoriaService.registrarPedido('EDITAR', pedidoParaEditar.id, { cliente: formData.cliente_nombre });
+          }
+      } else {
+          result = await supabase.from('pedidos').insert(pedidoBase).select();
+          if (!result.error && result.data?.[0]) {
+              await auditoriaService.registrarPedido('CREAR', result.data[0].id, { cliente: formData.cliente_nombre, total: pedidoBase.total });
+          }
+      }
+
+      if (result.error) {
+        const isColumnError = 
+          result.error.code === '42703' || 
+          result.error.code === 'PGRST204' || 
+          result.error.message?.includes('fecha_entrega') ||
+          result.error.message?.includes('hora_entrega');
+
+        if (isColumnError) {
+           console.warn('Columnas de fecha/hora no encontradas, usando fallback a notas.');
+           const baseSinColumnas = { ...pedidoBase };
+           delete baseSinColumnas.fecha_entrega;
+           delete baseSinColumnas.hora_entrega;
+           
+           const infoProgramacion = `ENTREGA PROGRAMADA: ${formData.fecha_entrega} a las ${formData.hora_entrega}.`;
+           baseSinColumnas.notas = `${infoProgramacion} ${formData.nota_adicional}`.trim();
+           
+           let retryResult;
+           if (pedidoParaEditar) {
+               retryResult = await supabase.from('pedidos').update(baseSinColumnas).eq('id', pedidoParaEditar.id);
+           } else {
+               retryResult = await supabase.from('pedidos').insert(baseSinColumnas);
+           }
+           
+           if (retryResult.error) throw retryResult.error;
         } else {
-          throw insertError;
+          throw result.error;
         }
       }
 
       onSuccess();
       onClose();
     } catch (err: any) {
-      console.error(err);
-      setError('Hubo un problema al conectar con el servidor. Intente nuevamente.');
+      console.error('Error al registrar pedido:', err);
+      const mensajeError = err.message || 'Hubo un problema al conectar con el servidor. Intente nuevamente.';
+      setError(`Aviso del Sistema: ${mensajeError}`);
     } finally {
       setLoading(false);
     }
@@ -241,13 +318,11 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
   return (
     <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn" onClick={onClose}>
       <div className="bg-white rounded-[40px] shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-        
-        {/* Header */}
         <div className="bg-brand-dark p-8 flex justify-between items-start relative overflow-hidden">
             <div className="absolute top-0 right-0 p-10 bg-brand-gold/5 rounded-full -mr-10 -mt-10 blur-3xl"></div>
             <div>
               <h3 className="text-2xl font-bold text-brand-gold font-serif flex items-center gap-3">
-                <Truck size={32} /> Nuevo Pedido Delivery
+                <Truck size={32} /> {pedidoParaEditar ? 'Editar Pedido' : 'Nuevo Pedido Delivery'}
               </h3>
               <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Módulo de Logística Arlet</p>
             </div>
@@ -260,9 +335,9 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
               <div className="w-10 h-10 bg-red-500 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-lg shadow-red-200">
                 <AlertCircle size={20} />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none mb-1">Aviso del Sistema</p>
-                <p className="text-sm text-red-700 font-bold">{error}</p>
+                <p className="text-sm text-red-700 font-bold">{error.includes('Aviso del Sistema:') ? error.replace('Aviso del Sistema:', '') : error}</p>
               </div>
             </div>
           )}
@@ -274,7 +349,6 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                         <User size={16} className="text-brand-gold" />
                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Ficha del Cliente</h4>
                     </div>
-                    
                     <div className="space-y-4">
                         <input 
                             type="text" placeholder="Nombre completo *" 
@@ -282,7 +356,6 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                             onChange={e => setFormData({...formData, cliente_nombre: e.target.value})} 
                             className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:bg-white focus:border-brand-gold outline-none transition-all font-bold text-gray-700" required 
                         />
-
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 font-black text-xs border-r border-gray-200 h-8 my-auto pr-3">
                                 +51
@@ -290,13 +363,12 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                             <input 
                                 type="tel" placeholder="987654321 *" 
                                 value={formData.telefono} 
-                                onChange={e => handleTelefonoChange(e.target.value)} 
+                                onChange={(e) => handleTelefonoChange(e.target.value)} 
                                 className={`w-full border-2 p-4 pl-16 rounded-2xl bg-gray-50 focus:bg-white outline-none transition-all font-black tracking-widest ${telefonoError ? 'border-red-300 text-red-700' : 'border-gray-100 focus:border-brand-gold'}`} 
                                 required 
                             />
                             {telefonoError && <p className="mt-1 text-[9px] text-red-500 font-black uppercase ml-1">{telefonoError}</p>}
                         </div>
-
                         <div className="grid grid-cols-2 gap-3">
                             {['efectivo', 'yape', 'transferencia', 'tarjeta'].map(metodo => (
                                 <button 
@@ -316,7 +388,6 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                         <Calendar size={16} className="text-brand-gold" />
                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Programación</h4>
                     </div>
-
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Fecha *</label>
@@ -337,7 +408,6 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                             </select>
                         </div>
                     </div>
-
                     <div className="space-y-4">
                         <textarea 
                             placeholder="Dirección de entrega *" 
@@ -355,13 +425,11 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                 </div>
             </div>
 
-            {/* Listado de Productos */}
             <div className="bg-gray-50/50 rounded-[35px] border border-gray-100 p-8">
                 <div className="flex justify-between items-center mb-6">
                     <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Listado de Productos</h4>
                     <button type="button" onClick={agregarProducto} className="text-[9px] bg-brand-dark text-brand-gold px-6 py-2.5 rounded-full font-black uppercase tracking-widest">+ Agregar Ítem</button>
                 </div>
-                
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-3 custom-scrollbar">
                     {formData.productos.map((p, index) => (
                         <div key={p.id} className="flex gap-4 items-center bg-white p-5 rounded-3xl border border-gray-100 group hover:border-brand-gold/30 transition-all shadow-sm">
@@ -373,11 +441,11 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                             <div className="flex items-center gap-3">
                                 <div className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 flex items-center">
                                     <span className="text-[9px] font-black text-gray-400 mr-2">CANT</span>
-                                    <input type="number" min="1" value={p.cantidad} onChange={e => actualizarProducto(p.id, 'cantidad', parseInt(e.target.value) || 1)} className="w-10 bg-transparent text-center font-black text-brand-dark outline-none" />
+                                    <input type="number" min="1" value={p.cantidad} onChange={e => actualizarProducto(p.id, 'cantidad', e.target.value)} className="w-10 bg-transparent text-center font-black text-brand-dark outline-none" />
                                 </div>
                                 <div className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 flex items-center">
                                     <span className="text-[9px] font-black text-gray-400 mr-2">S/</span>
-                                    <input type="number" step="0.1" value={p.precio} onChange={e => actualizarProducto(p.id, 'precio', parseFloat(e.target.value) || 0)} className="w-16 bg-transparent text-right font-black text-brand-dark outline-none" />
+                                    <input type="number" step="0.1" value={p.precio} onChange={e => actualizarProducto(p.id, 'precio', e.target.value)} className="w-16 bg-transparent text-right font-black text-brand-dark outline-none" />
                                 </div>
                                 <button type="button" onClick={() => eliminarProducto(p.id)} className="p-3 text-red-300 hover:text-red-500 transition-all"><Trash2 size={18}/></button>
                             </div>
@@ -386,7 +454,6 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                 </div>
             </div>
 
-            {/* Footer */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
                 <div className="bg-brand-dark p-7 rounded-[35px] text-white shadow-xl flex flex-col justify-center">
                     <p className="text-[9px] font-black text-brand-gold/50 uppercase tracking-[0.3em] mb-1">Monto Total</p>
@@ -395,10 +462,9 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                         <span className="text-4xl font-black text-brand-gold">{calcularTotal().toFixed(2)}</span>
                     </div>
                 </div>
-
                 <div className="flex flex-col gap-4 col-span-2">
                     <button type="submit" disabled={loading} className="w-full py-6 bg-brand-gold text-brand-dark rounded-[25px] font-black hover:bg-yellow-500 shadow-xl transition-all disabled:opacity-50 uppercase text-[11px] tracking-[0.3em] border-b-4 border-yellow-700">
-                        {loading ? <RefreshCw className="animate-spin mx-auto" size={20} /> : 'Confirmar Pedido'}
+                        {loading ? <RefreshCw className="animate-spin mx-auto" size={20} /> : (pedidoParaEditar ? 'Actualizar Pedido' : 'Confirmar Pedido')}
                     </button>
                     <button type="button" onClick={onClose} className="w-full py-4 text-gray-400 font-black hover:text-gray-600 transition-colors uppercase text-[9px] tracking-widest">Descartar</button>
                 </div>
