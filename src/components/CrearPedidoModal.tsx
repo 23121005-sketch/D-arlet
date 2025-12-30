@@ -1,24 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  X, Plus, Trash2, MapPin, Phone, User, Clock, 
-  Package, DollarSign, CheckCircle, RefreshCw,
-  Truck, AlertCircle, Calendar, Hash
-} from 'lucide-react';
-import { supabase } from '../supabaseClient';
-import { pedidoService } from '../services/pedidoService';
-import { auditoriaService } from '../services/auditoriaService';
-import type { Empleado } from '../types';
-import type {Pedido, PedidoItem } from '../types';
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  Trash2,
+  User,
+  RefreshCw,
+  Truck,
+  AlertCircle,
+  Calendar,
+} from "lucide-react";
+import { supabase } from "../supabaseClient";
+import { auditoriaService } from "../services/auditoriaService";
+import type { Empleado } from "../types";
+import type { Pedido } from "../types";
 
 // Helper para fecha local YYYY-MM-DD
-const getLocalDate = () => new Date().toLocaleDateString('sv-SE');
+const getLocalDate = () => new Date().toLocaleDateString("sv-SE");
 
 export interface CrearPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  repartidores: Empleado[];
-  pedidoParaEditar?: Pedido | null; 
+  repartidores?: Empleado[];
+  pedidoParaEditar?: Pedido | null;
 }
 
 interface ProductoItem {
@@ -33,24 +36,25 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  repartidores,
-  pedidoParaEditar
+  pedidoParaEditar,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [telefonoError, setTelefonoError] = useState('');
-  
+  const [error, setError] = useState("");
+  const [telefonoError, setTelefonoError] = useState("");
+
   const [formData, setFormData] = useState({
-    cliente_nombre: '',
-    telefono: '',
+    cliente_nombre: "",
+    telefono: "",
     fecha_entrega: getLocalDate(),
-    hora_entrega: '', 
-    direccion: '',
-    referencia: '',
-    productos: [{ id: Date.now().toString(), nombre: '', cantidad: 1, precio: 0 }] as ProductoItem[],
-    nota_adicional: '',
-    repartidor_id: '',
-    metodo_pago: 'efectivo' as 'efectivo' | 'yape' | 'plin' | 'transferencia',
+    hora_entrega: "",
+    direccion: "",
+    referencia: "",
+    productos: [
+      { id: Date.now().toString(), nombre: "", cantidad: 1, precio: 0 },
+    ] as ProductoItem[],
+    nota_adicional: "",
+    repartidor_id: "",
+    metodo_pago: "efectivo" as "efectivo" | "yape" | "plin" | "transferencia",
   });
 
   const [horasDisponibles, setHorasDisponibles] = useState<string[]>([]);
@@ -60,50 +64,55 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
       if (pedidoParaEditar) {
         // MODO EDICIÓN: Precargar datos
         let fecha = getLocalDate();
-        let hora = '';
+        let hora = "";
 
         if ((pedidoParaEditar as any).fecha_entrega) {
-            fecha = (pedidoParaEditar as any).fecha_entrega;
-            hora = (pedidoParaEditar as any).hora_entrega || '';
+          fecha = (pedidoParaEditar as any).fecha_entrega;
+          hora = (pedidoParaEditar as any).hora_entrega || "";
         }
 
         setFormData({
-          cliente_nombre: pedidoParaEditar.cliente_nombre || '',
-          telefono: pedidoParaEditar.telefono || '',
+          cliente_nombre: pedidoParaEditar.cliente_nombre || "",
+          telefono: pedidoParaEditar.telefono || "",
           fecha_entrega: fecha,
           hora_entrega: hora,
-          direccion: pedidoParaEditar.direccion || '',
-          referencia: pedidoParaEditar.referencia || '',
-          productos: (pedidoParaEditar.detalles_pedido || []).map((p: any, idx: number) => ({
-            id: idx.toString(),
-            nombre: p.item || '',
-            cantidad: p.cantidad || 1,
-            precio: p.precio || 0,
-            notasItem: p.notas || ''
-          })),
-          nota_adicional: pedidoParaEditar.notas || '',
-          repartidor_id: pedidoParaEditar.repartidor_id || '',
-          metodo_pago: (pedidoParaEditar.metodo_pago?.toLowerCase() as any) || 'efectivo',
+          direccion: pedidoParaEditar.direccion || "",
+          referencia: pedidoParaEditar.referencia || "",
+          productos: (pedidoParaEditar.detalles_pedido || []).map(
+            (p: any, idx: number) => ({
+              id: idx.toString(),
+              nombre: p.item || "",
+              cantidad: p.cantidad || 1,
+              precio: p.precio || 0,
+              notasItem: p.notas || "",
+            })
+          ),
+          nota_adicional: pedidoParaEditar.notas || "",
+          repartidor_id: pedidoParaEditar.repartidor_id || "",
+          metodo_pago:
+            (pedidoParaEditar.metodo_pago?.toLowerCase() as any) || "efectivo",
         });
       } else {
         // MODO CREACIÓN: Limpiar formulario
-        const userStr = localStorage.getItem('arlet_user');
+        const userStr = localStorage.getItem("arlet_user");
         const user = userStr ? JSON.parse(userStr) : null;
-        setFormData({ 
-          cliente_nombre: '',
-          telefono: '',
+        setFormData({
+          cliente_nombre: "",
+          telefono: "",
           fecha_entrega: getLocalDate(),
-          hora_entrega: '',
-          direccion: '',
-          referencia: '',
-          productos: [{ id: Date.now().toString(), nombre: '', cantidad: 1, precio: 0 }],
-          nota_adicional: '',
-          repartidor_id: user?.id || '',
-          metodo_pago: 'efectivo'
+          hora_entrega: "",
+          direccion: "",
+          referencia: "",
+          productos: [
+            { id: Date.now().toString(), nombre: "", cantidad: 1, precio: 0 },
+          ],
+          nota_adicional: "",
+          repartidor_id: user?.id || "",
+          metodo_pago: "efectivo",
         });
       }
-      setTelefonoError('');
-      setError('');
+      setTelefonoError("");
+      setError("");
     }
   }, [isOpen, pedidoParaEditar]);
 
@@ -115,131 +124,150 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
     const horas: string[] = [];
     for (let h = 8; h < 24; h++) {
       for (let m = 0; m < 60; m += 30) {
-        const hh = h.toString().padStart(2, '0');
-        const mm = m.toString().padStart(2, '0');
+        const hh = h.toString().padStart(2, "0");
+        const mm = m.toString().padStart(2, "0");
         horas.push(`${hh}:${mm}`);
       }
     }
     setHorasDisponibles(horas);
-    
+
     const ahora = new Date();
     ahora.setMinutes(ahora.getMinutes() + 30);
     const hActual = ahora.getHours();
     const mActual = ahora.getMinutes();
 
-    const sugerida = horas.find(h => {
-        const [hh, mm] = h.split(':').map(Number);
-        if (formData.fecha_entrega === getLocalDate()) {
-            return hh > hActual || (hh === hActual && mm >= mActual);
-        }
-        return true;
+    const sugerida = horas.find((h) => {
+      const [hh, mm] = h.split(":").map(Number);
+      if (formData.fecha_entrega === getLocalDate()) {
+        return hh > hActual || (hh === hActual && mm >= mActual);
+      }
+      return true;
     });
 
     if (sugerida && !formData.hora_entrega) {
-        setFormData(prev => ({ ...prev, hora_entrega: sugerida }));
+      setFormData((prev) => ({ ...prev, hora_entrega: sugerida }));
     } else if (!formData.hora_entrega) {
-        setFormData(prev => ({ ...prev, hora_entrega: '13:00' }));
+      setFormData((prev) => ({ ...prev, hora_entrega: "13:00" }));
     }
   };
 
-  const calcularTotal = () => formData.productos.reduce((sum, p) => sum + (p.cantidad * (p.precio || 0)), 0);
+  const calcularTotal = () =>
+    formData.productos.reduce(
+      (sum, p) => sum + p.cantidad * (p.precio || 0),
+      0
+    );
 
   const agregarProducto = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      productos: [...prev.productos, { id: Date.now().toString(), nombre: '', cantidad: 1, precio: 0 }]
+      productos: [
+        ...prev.productos,
+        { id: Date.now().toString(), nombre: "", cantidad: 1, precio: 0 },
+      ],
     }));
   };
 
   const actualizarProducto = (id: string, campo: string, valor: any) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      productos: prev.productos.map(p => {
+      productos: prev.productos.map((p) => {
         if (p.id === id) {
-          if (campo === 'precio') {
+          if (campo === "precio") {
             return { ...p, [campo]: parseFloat(valor) || 0 };
           }
-          if (campo === 'cantidad') {
+          if (campo === "cantidad") {
             return { ...p, [campo]: parseInt(valor) || 1 };
           }
           return { ...p, [campo]: valor };
         }
         return p;
-      })
+      }),
     }));
   };
 
   const eliminarProducto = (id: string) => {
     if (formData.productos.length > 1) {
-      setFormData(prev => ({ ...prev, productos: prev.productos.filter(p => p.id !== id) }));
+      setFormData((prev) => ({
+        ...prev,
+        productos: prev.productos.filter((p) => p.id !== id),
+      }));
     }
   };
 
   const validarTelefono = (tel: string) => {
-    if (!tel) return 'Requerido';
-    if (!tel.startsWith('9')) return 'Inicia con 9';
-    if (tel.length !== 9) return '9 dígitos';
-    return '';
+    if (!tel) return "Requerido";
+    if (!tel.startsWith("9")) return "Inicia con 9";
+    if (tel.length !== 9) return "9 dígitos";
+    return "";
   };
 
   const handleTelefonoChange = (value: string) => {
-    const digitsOnly = value.replace(/\D/g, '').slice(0, 9);
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 9);
     setFormData({ ...formData, telefono: digitsOnly });
     if (digitsOnly.length > 0) setTelefonoError(validarTelefono(digitsOnly));
-    else setTelefonoError('');
+    else setTelefonoError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     const telErr = validarTelefono(formData.telefono);
     if (telErr) {
-        setTelefonoError(telErr);
-        setError('El número de teléfono debe ser válido (9 dígitos, inicia con 9).');
-        return;
+      setTelefonoError(telErr);
+      setError(
+        "El número de teléfono debe ser válido (9 dígitos, inicia con 9)."
+      );
+      return;
     }
 
     const ahora = new Date();
-    const [anio, mes, dia] = formData.fecha_entrega.split('-').map(Number);
-    const [horaStr, minStr] = (formData.hora_entrega || '00:00').split(':');
+    const [anio, mes, dia] = formData.fecha_entrega.split("-").map(Number);
+    const [horaStr, minStr] = (formData.hora_entrega || "00:00").split(":");
     const hora = parseInt(horaStr) || 0;
     const min = parseInt(minStr) || 0;
     const fechaSeleccionada = new Date(anio, mes - 1, dia, hora, min);
 
     if (fechaSeleccionada < ahora) {
-        setError('La fecha o la hora de entrega no pueden ser anteriores a la hora actual.');
-        document.querySelector('.custom-scrollbar')?.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
+      setError(
+        "La fecha o la hora de entrega no pueden ser anteriores a la hora actual."
+      );
+      document
+        .querySelector(".custom-scrollbar")
+        ?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     }
 
-    if (formData.productos.some(p => !p.nombre.trim() || p.precio < 0)) {
-        setError('Complete los nombres y precios de los productos.');
-        return;
+    if (formData.productos.some((p) => !p.nombre.trim() || p.precio < 0)) {
+      setError("Complete los nombres y precios de los productos.");
+      return;
     }
 
     setLoading(true);
     try {
-      const userStr = localStorage.getItem('arlet_user');
+      const userStr = localStorage.getItem("arlet_user");
       const user = userStr ? JSON.parse(userStr) : null;
 
       if (!user || !user.id) {
-          throw new Error('Sesión de usuario no encontrada. Por favor inicie sesión nuevamente.');
+        throw new Error(
+          "Sesión de usuario no encontrada. Por favor inicie sesión nuevamente."
+        );
       }
 
-      const cleanRepartidorId = formData.repartidor_id && formData.repartidor_id.trim() !== '' 
-          ? formData.repartidor_id.trim() 
+      const cleanRepartidorId =
+        formData.repartidor_id && formData.repartidor_id.trim() !== ""
+          ? formData.repartidor_id.trim()
           : null;
 
       const pedidoBase: any = {
         cliente_nombre: formData.cliente_nombre.trim(),
         direccion: formData.direccion.trim(),
         telefono: formData.telefono.trim(),
-        detalles_pedido: formData.productos.map(p => ({
+        detalles_pedido: formData.productos.map((p) => ({
           item: p.nombre,
           cantidad: p.cantidad,
           precio: p.precio,
-          notas: p.notasItem || ''
+          notas: p.notasItem || "",
         })),
         total: calcularTotal(),
         notas: formData.nota_adicional.trim(),
@@ -247,56 +275,74 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
         repartidor_id: cleanRepartidorId,
         empleado_id: user.id,
         prioridad: 1,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       if (!pedidoParaEditar) {
-        pedidoBase.estado = 'pendiente';
+        pedidoBase.estado = "pendiente";
         pedidoBase.pagado = true;
         pedidoBase.created_at = new Date().toISOString();
       }
-      
+
       pedidoBase.referencia = formData.referencia.trim() || null;
       pedidoBase.fecha_entrega = formData.fecha_entrega;
       pedidoBase.hora_entrega = formData.hora_entrega;
 
       let result;
       if (pedidoParaEditar) {
-          result = await supabase.from('pedidos').update(pedidoBase).eq('id', pedidoParaEditar.id);
-          if (!result.error) {
-              await auditoriaService.registrarPedido('EDITAR', pedidoParaEditar.id, { cliente: formData.cliente_nombre });
-          }
+        result = await supabase
+          .from("pedidos")
+          .update(pedidoBase)
+          .eq("id", pedidoParaEditar.id);
+        if (!result.error) {
+          await auditoriaService.registrarPedido(
+            "EDITAR",
+            pedidoParaEditar.id,
+            { cliente: formData.cliente_nombre }
+          );
+        }
       } else {
-          result = await supabase.from('pedidos').insert(pedidoBase).select();
-          if (!result.error && result.data?.[0]) {
-              await auditoriaService.registrarPedido('CREAR', result.data[0].id, { cliente: formData.cliente_nombre, total: pedidoBase.total });
-          }
+        result = await supabase.from("pedidos").insert(pedidoBase).select();
+        if (!result.error && result.data?.[0]) {
+          await auditoriaService.registrarPedido("CREAR", result.data[0].id, {
+            cliente: formData.cliente_nombre,
+            total: pedidoBase.total,
+          });
+        }
       }
 
       if (result.error) {
-        const isColumnError = 
-          result.error.code === '42703' || 
-          result.error.code === 'PGRST204' || 
-          result.error.message?.includes('fecha_entrega') ||
-          result.error.message?.includes('hora_entrega');
+        const isColumnError =
+          result.error.code === "42703" ||
+          result.error.code === "PGRST204" ||
+          result.error.message?.includes("fecha_entrega") ||
+          result.error.message?.includes("hora_entrega");
 
         if (isColumnError) {
-           console.warn('Columnas de fecha/hora no encontradas, usando fallback a notas.');
-           const baseSinColumnas = { ...pedidoBase };
-           delete baseSinColumnas.fecha_entrega;
-           delete baseSinColumnas.hora_entrega;
-           
-           const infoProgramacion = `ENTREGA PROGRAMADA: ${formData.fecha_entrega} a las ${formData.hora_entrega}.`;
-           baseSinColumnas.notas = `${infoProgramacion} ${formData.nota_adicional}`.trim();
-           
-           let retryResult;
-           if (pedidoParaEditar) {
-               retryResult = await supabase.from('pedidos').update(baseSinColumnas).eq('id', pedidoParaEditar.id);
-           } else {
-               retryResult = await supabase.from('pedidos').insert(baseSinColumnas);
-           }
-           
-           if (retryResult.error) throw retryResult.error;
+          console.warn(
+            "Columnas de fecha/hora no encontradas, usando fallback a notas."
+          );
+          const baseSinColumnas = { ...pedidoBase };
+          delete baseSinColumnas.fecha_entrega;
+          delete baseSinColumnas.hora_entrega;
+
+          const infoProgramacion = `ENTREGA PROGRAMADA: ${formData.fecha_entrega} a las ${formData.hora_entrega}.`;
+          baseSinColumnas.notas =
+            `${infoProgramacion} ${formData.nota_adicional}`.trim();
+
+          let retryResult;
+          if (pedidoParaEditar) {
+            retryResult = await supabase
+              .from("pedidos")
+              .update(baseSinColumnas)
+              .eq("id", pedidoParaEditar.id);
+          } else {
+            retryResult = await supabase
+              .from("pedidos")
+              .insert(baseSinColumnas);
+          }
+
+          if (retryResult.error) throw retryResult.error;
         } else {
           throw result.error;
         }
@@ -305,8 +351,10 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      console.error('Error al registrar pedido:', err);
-      const mensajeError = err.message || 'Hubo un problema al conectar con el servidor. Intente nuevamente.';
+      console.error("Error al registrar pedido:", err);
+      const mensajeError =
+        err.message ||
+        "Hubo un problema al conectar con el servidor. Intente nuevamente.";
       setError(`Aviso del Sistema: ${mensajeError}`);
     } finally {
       setLoading(false);
@@ -316,17 +364,31 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn" onClick={onClose}>
-      <div className="bg-white rounded-[40px] shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-brand-dark/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-[40px] shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="bg-brand-dark p-8 flex justify-between items-start relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-10 bg-brand-gold/5 rounded-full -mr-10 -mt-10 blur-3xl"></div>
-            <div>
-              <h3 className="text-2xl font-bold text-brand-gold font-serif flex items-center gap-3">
-                <Truck size={32} /> {pedidoParaEditar ? 'Editar Pedido' : 'Nuevo Pedido Delivery'}
-              </h3>
-              <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Módulo de Logística Arlet</p>
-            </div>
-            <button onClick={onClose} className="text-white/30 hover:text-white transition-all bg-white/5 p-2 rounded-full"><X size={24} /></button>
+          <div className="absolute top-0 right-0 p-10 bg-brand-gold/5 rounded-full -mr-10 -mt-10 blur-3xl"></div>
+          <div>
+            <h3 className="text-2xl font-bold text-brand-gold font-serif flex items-center gap-3">
+              <Truck size={32} />{" "}
+              {pedidoParaEditar ? "Editar Pedido" : "Nuevo Pedido Delivery"}
+            </h3>
+            <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mt-2">
+              Módulo de Logística Arlet
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/30 hover:text-white transition-all bg-white/5 p-2 rounded-full"
+          >
+            <X size={24} />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
@@ -336,138 +398,268 @@ export const CrearPedidoModal: React.FC<CrearPedidoModalProps> = ({
                 <AlertCircle size={20} />
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none mb-1">Aviso del Sistema</p>
-                <p className="text-sm text-red-700 font-bold">{error.includes('Aviso del Sistema:') ? error.replace('Aviso del Sistema:', '') : error}</p>
+                <p className="text-[10px] font-black text-red-400 uppercase tracking-widest leading-none mb-1">
+                  Aviso del Sistema
+                </p>
+                <p className="text-sm text-red-700 font-bold">
+                  {error.includes("Aviso del Sistema:")
+                    ? error.replace("Aviso del Sistema:", "")
+                    : error}
+                </p>
               </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div className="space-y-6">
-                    <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
-                        <User size={16} className="text-brand-gold" />
-                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Ficha del Cliente</h4>
-                    </div>
-                    <div className="space-y-4">
-                        <input 
-                            type="text" placeholder="Nombre completo *" 
-                            value={formData.cliente_nombre} 
-                            onChange={e => setFormData({...formData, cliente_nombre: e.target.value})} 
-                            className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:bg-white focus:border-brand-gold outline-none transition-all font-bold text-gray-700" required 
-                        />
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 font-black text-xs border-r border-gray-200 h-8 my-auto pr-3">
-                                +51
-                            </div>
-                            <input 
-                                type="tel" placeholder="987654321 *" 
-                                value={formData.telefono} 
-                                onChange={(e) => handleTelefonoChange(e.target.value)} 
-                                className={`w-full border-2 p-4 pl-16 rounded-2xl bg-gray-50 focus:bg-white outline-none transition-all font-black tracking-widest ${telefonoError ? 'border-red-300 text-red-700' : 'border-gray-100 focus:border-brand-gold'}`} 
-                                required 
-                            />
-                            {telefonoError && <p className="mt-1 text-[9px] text-red-500 font-black uppercase ml-1">{telefonoError}</p>}
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            {['efectivo', 'yape', 'transferencia', 'tarjeta'].map(metodo => (
-                                <button 
-                                    key={metodo} type="button"
-                                    onClick={() => setFormData({...formData, metodo_pago: metodo as any})}
-                                    className={`py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${formData.metodo_pago === metodo ? 'border-brand-gold bg-brand-gold/5 text-brand-dark' : 'border-gray-100 text-gray-400'}`}
-                                >
-                                    {metodo}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <User size={16} className="text-brand-gold" />
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                    Ficha del Cliente
+                  </h4>
                 </div>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Nombre completo *"
+                    value={formData.cliente_nombre}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        cliente_nombre: e.target.value,
+                      })
+                    }
+                    className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:bg-white focus:border-brand-gold outline-none transition-all font-bold text-gray-700"
+                    required
+                  />
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 font-black text-xs border-r border-gray-200 h-8 my-auto pr-3">
+                      +51
+                    </div>
+                    <input
+                      type="tel"
+                      placeholder="987654321 *"
+                      value={formData.telefono}
+                      onChange={(e) => handleTelefonoChange(e.target.value)}
+                      className={`w-full border-2 p-4 pl-16 rounded-2xl bg-gray-50 focus:bg-white outline-none transition-all font-black tracking-widest ${
+                        telefonoError
+                          ? "border-red-300 text-red-700"
+                          : "border-gray-100 focus:border-brand-gold"
+                      }`}
+                      required
+                    />
+                    {telefonoError && (
+                      <p className="mt-1 text-[9px] text-red-500 font-black uppercase ml-1">
+                        {telefonoError}
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {["efectivo", "yape", "transferencia", "tarjeta"].map(
+                      (metodo) => (
+                        <button
+                          key={metodo}
+                          type="button"
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              metodo_pago: metodo as any,
+                            })
+                          }
+                          className={`py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${
+                            formData.metodo_pago === metodo
+                              ? "border-brand-gold bg-brand-gold/5 text-brand-dark"
+                              : "border-gray-100 text-gray-400"
+                          }`}
+                        >
+                          {metodo}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
 
-                <div className="space-y-6">
-                    <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
-                        <Calendar size={16} className="text-brand-gold" />
-                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Programación</h4>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Fecha *</label>
-                            <input 
-                                type="date" min={getLocalDate()} value={formData.fecha_entrega}
-                                onChange={e => setFormData({...formData, fecha_entrega: e.target.value})}
-                                className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:border-brand-gold font-black text-gray-700 outline-none" required
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Hora *</label>
-                            <select 
-                                value={formData.hora_entrega} 
-                                onChange={e => setFormData({...formData, hora_entrega: e.target.value})} 
-                                className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:border-brand-gold font-black text-gray-700 outline-none cursor-pointer" required
-                            >
-                                {horasDisponibles.map(h => <option key={h} value={h}>{h} hrs</option>)}
-                            </select>
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        <textarea 
-                            placeholder="Dirección de entrega *" 
-                            value={formData.direccion} 
-                            onChange={e => setFormData({...formData, direccion: e.target.value})} 
-                            className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 h-24 outline-none focus:border-brand-gold resize-none font-bold text-sm" required 
-                        />
-                        <input 
-                            type="text" placeholder="Referencias (piso, dpto, etc.)" 
-                            value={formData.referencia} 
-                            onChange={e => setFormData({...formData, referencia: e.target.value})} 
-                            className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:border-brand-gold outline-none font-medium text-sm" 
-                        />
-                    </div>
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <Calendar size={16} className="text-brand-gold" />
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                    Programación
+                  </h4>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-gray-400 uppercase ml-1">
+                      Fecha *
+                    </label>
+                    <input
+                      type="date"
+                      min={getLocalDate()}
+                      value={formData.fecha_entrega}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          fecha_entrega: e.target.value,
+                        })
+                      }
+                      className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:border-brand-gold font-black text-gray-700 outline-none"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-gray-400 uppercase ml-1">
+                      Hora *
+                    </label>
+                    <select
+                      value={formData.hora_entrega}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          hora_entrega: e.target.value,
+                        })
+                      }
+                      className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:border-brand-gold font-black text-gray-700 outline-none cursor-pointer"
+                      required
+                    >
+                      {horasDisponibles.map((h) => (
+                        <option key={h} value={h}>
+                          {h} hrs
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <textarea
+                    placeholder="Dirección de entrega *"
+                    value={formData.direccion}
+                    onChange={(e) =>
+                      setFormData({ ...formData, direccion: e.target.value })
+                    }
+                    className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 h-24 outline-none focus:border-brand-gold resize-none font-bold text-sm"
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Referencias (piso, dpto, etc.)"
+                    value={formData.referencia}
+                    onChange={(e) =>
+                      setFormData({ ...formData, referencia: e.target.value })
+                    }
+                    className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 focus:border-brand-gold outline-none font-medium text-sm"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="bg-gray-50/50 rounded-[35px] border border-gray-100 p-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Listado de Productos</h4>
-                    <button type="button" onClick={agregarProducto} className="text-[9px] bg-brand-dark text-brand-gold px-6 py-2.5 rounded-full font-black uppercase tracking-widest">+ Agregar Ítem</button>
-                </div>
-                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-3 custom-scrollbar">
-                    {formData.productos.map((p, index) => (
-                        <div key={p.id} className="flex gap-4 items-center bg-white p-5 rounded-3xl border border-gray-100 group hover:border-brand-gold/30 transition-all shadow-sm">
-                            <input 
-                                type="text" placeholder="Nombre del producto *" value={p.nombre} 
-                                onChange={e => actualizarProducto(p.id, 'nombre', e.target.value)} 
-                                className="flex-1 bg-transparent border-none font-black text-gray-800 outline-none text-sm" required 
-                            />
-                            <div className="flex items-center gap-3">
-                                <div className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 flex items-center">
-                                    <span className="text-[9px] font-black text-gray-400 mr-2">CANT</span>
-                                    <input type="number" min="1" value={p.cantidad} onChange={e => actualizarProducto(p.id, 'cantidad', e.target.value)} className="w-10 bg-transparent text-center font-black text-brand-dark outline-none" />
-                                </div>
-                                <div className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 flex items-center">
-                                    <span className="text-[9px] font-black text-gray-400 mr-2">S/</span>
-                                    <input type="number" step="0.1" value={p.precio} onChange={e => actualizarProducto(p.id, 'precio', e.target.value)} className="w-16 bg-transparent text-right font-black text-brand-dark outline-none" />
-                                </div>
-                                <button type="button" onClick={() => eliminarProducto(p.id)} className="p-3 text-red-300 hover:text-red-500 transition-all"><Trash2 size={18}/></button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
+                  Listado de Productos
+                </h4>
+                <button
+                  type="button"
+                  onClick={agregarProducto}
+                  className="text-[9px] bg-brand-dark text-brand-gold px-6 py-2.5 rounded-full font-black uppercase tracking-widest"
+                >
+                  + Agregar Ítem
+                </button>
+              </div>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-3 custom-scrollbar">
+                {formData.productos.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex gap-4 items-center bg-white p-5 rounded-3xl border border-gray-100 group hover:border-brand-gold/30 transition-all shadow-sm"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Nombre del producto *"
+                      value={p.nombre}
+                      onChange={(e) =>
+                        actualizarProducto(p.id, "nombre", e.target.value)
+                      }
+                      className="flex-1 bg-transparent border-none font-black text-gray-800 outline-none text-sm"
+                      required
+                    />
+                    <div className="flex items-center gap-3">
+                      <div className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 flex items-center">
+                        <span className="text-[9px] font-black text-gray-400 mr-2">
+                          CANT
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={p.cantidad}
+                          onChange={(e) =>
+                            actualizarProducto(p.id, "cantidad", e.target.value)
+                          }
+                          className="w-10 bg-transparent text-center font-black text-brand-dark outline-none"
+                        />
+                      </div>
+                      <div className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 flex items-center">
+                        <span className="text-[9px] font-black text-gray-400 mr-2">
+                          S/
+                        </span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={p.precio}
+                          onChange={(e) =>
+                            actualizarProducto(p.id, "precio", e.target.value)
+                          }
+                          className="w-16 bg-transparent text-right font-black text-brand-dark outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => eliminarProducto(p.id)}
+                        className="p-3 text-red-300 hover:text-red-500 transition-all"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
-                <div className="bg-brand-dark p-7 rounded-[35px] text-white shadow-xl flex flex-col justify-center">
-                    <p className="text-[9px] font-black text-brand-gold/50 uppercase tracking-[0.3em] mb-1">Monto Total</p>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold text-brand-gold/60">S/</span>
-                        <span className="text-4xl font-black text-brand-gold">{calcularTotal().toFixed(2)}</span>
-                    </div>
+              <div className="bg-brand-dark p-7 rounded-[35px] text-white shadow-xl flex flex-col justify-center">
+                <p className="text-[9px] font-black text-brand-gold/50 uppercase tracking-[0.3em] mb-1">
+                  Monto Total
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-bold text-brand-gold/60">
+                    S/
+                  </span>
+                  <span className="text-4xl font-black text-brand-gold">
+                    {calcularTotal().toFixed(2)}
+                  </span>
                 </div>
-                <div className="flex flex-col gap-4 col-span-2">
-                    <button type="submit" disabled={loading} className="w-full py-6 bg-brand-gold text-brand-dark rounded-[25px] font-black hover:bg-yellow-500 shadow-xl transition-all disabled:opacity-50 uppercase text-[11px] tracking-[0.3em] border-b-4 border-yellow-700">
-                        {loading ? <RefreshCw className="animate-spin mx-auto" size={20} /> : (pedidoParaEditar ? 'Actualizar Pedido' : 'Confirmar Pedido')}
-                    </button>
-                    <button type="button" onClick={onClose} className="w-full py-4 text-gray-400 font-black hover:text-gray-600 transition-colors uppercase text-[9px] tracking-widest">Descartar</button>
-                </div>
+              </div>
+              <div className="flex flex-col gap-4 col-span-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-6 bg-brand-gold text-brand-dark rounded-[25px] font-black hover:bg-yellow-500 shadow-xl transition-all disabled:opacity-50 uppercase text-[11px] tracking-[0.3em] border-b-4 border-yellow-700"
+                >
+                  {loading ? (
+                    <RefreshCw className="animate-spin mx-auto" size={20} />
+                  ) : pedidoParaEditar ? (
+                    "Actualizar Pedido"
+                  ) : (
+                    "Confirmar Pedido"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-4 text-gray-400 font-black hover:text-gray-600 transition-colors uppercase text-[9px] tracking-widest"
+                >
+                  Descartar
+                </button>
+              </div>
             </div>
           </form>
         </div>

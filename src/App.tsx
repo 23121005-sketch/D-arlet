@@ -1,26 +1,37 @@
-
-import React from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { AuthProvider } from './services/authService';
-import { Login } from './pages/Login';
-import { Navbar, Chatbot, ProtectedRoute } from './components/Components';
-import { Home, About, Menu, Gallery, Kitchen, Contact } from './pages/PublicPages';
-import { 
-  AdminPanel, 
-  ReservationPanel, 
-  DeliveryPanel, 
-  PanelCocina, 
+import React from "react";
+import { HashRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./services/authService";
+import { Login } from "./pages/Login";
+import { Navbar, Chatbot, ProtectedRoute } from "./components/Components";
+import {
+  Home,
+  About,
+  Menu,
+  Gallery,
+  Kitchen,
+  Contact,
+} from "./pages/PublicPages";
+import {
+  AdminPanel,
+  ReservationPanel,
+  DeliveryPanel,
+  PanelCocina,
   AdminPedidosPanel,
-  AdminReclamacionesPanel
-} from './pages/PanelPages';
+  AdminReclamacionesPanel,
+} from "./pages/PanelPages";
 
 const Footer = () => (
   <footer className="bg-brand-dark text-white py-12 border-t border-brand-gold/30">
     <div className="max-w-7xl mx-auto px-4 text-center">
-      <h2 className="text-2xl font-serif text-brand-gold font-bold mb-4">Arlet's Restaurant</h2>
-      <p className="text-gray-400 text-sm mb-6">Sabor, tradición y elegancia en cada bocado.</p>
+      <h2 className="text-2xl font-serif text-brand-gold font-bold mb-4">
+        Arlet's Restaurant
+      </h2>
+      <p className="text-gray-400 text-sm mb-6">
+        Sabor, tradición y elegancia en cada bocado.
+      </p>
       <div className="text-xs text-gray-500">
-        &copy; {new Date().getFullYear()} Arlet's Restaurant. Todos los derechos reservados.
+        &copy; {new Date().getFullYear()} Arlet's Restaurant. Todos los derechos
+        reservados.
       </div>
     </div>
   </footer>
@@ -33,9 +44,7 @@ const PublicLayout = ({ children }: { children?: React.ReactNode }) => {
       <Navbar />
 
       {/* ESPACIO PARA QUE EL NAV NO TAPE EL CONTENIDO */}
-      <main className="flex-grow pt-24">
-        {children}
-      </main>
+      <main className="flex-grow pt-24">{children}</main>
 
       <Chatbot />
       <Footer />
@@ -47,79 +56,128 @@ const AppContent = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
-      <Route path="/nosotros" element={<PublicLayout><About /></PublicLayout>} />
-      <Route path="/menu" element={<PublicLayout><Menu /></PublicLayout>} />
-      <Route path="/galeria" element={<PublicLayout><Gallery /></PublicLayout>} />
-      <Route path="/cocina" element={<PublicLayout><Kitchen /></PublicLayout>} />
-      <Route path="/contacto" element={<PublicLayout><Contact /></PublicLayout>} />
-      
+      <Route
+        path="/"
+        element={
+          <PublicLayout>
+            <Home />
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/nosotros"
+        element={
+          <PublicLayout>
+            <About />
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/menu"
+        element={
+          <PublicLayout>
+            <Menu />
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/galeria"
+        element={
+          <PublicLayout>
+            <Gallery />
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/cocina"
+        element={
+          <PublicLayout>
+            <Kitchen />
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/contacto"
+        element={
+          <PublicLayout>
+            <Contact />
+          </PublicLayout>
+        }
+      />
+
       {/* Auth */}
       <Route path="/login" element={<Login />} />
 
       {/* PROTECTED ROUTES */}
       {/* Panel Administrador */}
-      <Route 
-        path="/admin" 
+      <Route
+        path="/admin"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminPanel />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Panel de Reclamaciones (Admin) */}
-      <Route 
-        path="/admin-reclamos" 
+      <Route
+        path="/admin-reclamos"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminReclamacionesPanel />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Panel de Reservas */}
-      <Route 
-        path="/reservas" 
+      <Route
+        path="/reservas"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'reservas']}>
+          <ProtectedRoute allowedRoles={["admin", "reservas"]}>
             <ReservationPanel />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Panel Delivery */}
-      <Route 
-        path="/delivery" 
+      <Route
+        path="/delivery"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'delivery']}>
+          <ProtectedRoute allowedRoles={["admin", "delivery"]}>
             <DeliveryPanel />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Panel Cocina */}
-      <Route 
-        path="/cocina-panel" 
+      <Route
+        path="/cocina-panel"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'cocina']}>
+          <ProtectedRoute allowedRoles={["admin", "cocina"]}>
             <PanelCocina />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Todos los Pedidos (Admin) */}
-      <Route 
-        path="/admin/pedidos" 
+      <Route
+        path="/admin/pedidos"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminPedidosPanel />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Ruta de fallback - Redirigir al home si no existe */}
-      <Route path="*" element={<PublicLayout><Home /></PublicLayout>} />
+      <Route
+        path="*"
+        element={
+          <PublicLayout>
+            <Home />
+          </PublicLayout>
+        }
+      />
     </Routes>
   );
 };
